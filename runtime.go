@@ -3,8 +3,8 @@ package runtime
 import (
 	"bufio"
 	"context"
-	"github.com/gofunct/cflag"
 	"github.com/gofunct/runtime/encoding"
+	"github.com/spf13/pflag"
 	"io"
 )
 
@@ -17,7 +17,7 @@ type Runtime struct {
 	Encoders    encoding.EncoderGroup
 	Decoders    encoding.DecoderGroup
 	Handlers    []func(r *Runtime, ctx context.Context) error
-	flagger 	*cflag.Flagger
+	flagger     *pflag.FlagSet
 }
 
 func NewRuntime(opts ...Option) *Runtime {
@@ -28,12 +28,14 @@ func NewRuntime(opts ...Option) *Runtime {
 	return r
 }
 
-func NewDefaultRuntime(reader io.Reader, writer io.Writer) *Runtime {
+func NewDefaultRuntime(name string, reader io.Reader, writer io.Writer) *Runtime {
 	br := bufio.NewReader(reader)
 	bw := bufio.NewWriter(writer)
 	rw := bufio.NewReadWriter(br, bw)
 	scan := bufio.NewScanner(rw.Reader)
-	return &Runtime{InputOutput: rw, Scanner: scan, Encoders: encoding.DefaultEncoders, Decoders: encoding.DefaultDecoders}
+	f := pflag.NewFlagSet(name, pflag.ExitOnError)
+
+	return &Runtime{InputOutput: rw, Scanner: scan, Encoders: encoding.DefaultEncoders, Decoders: encoding.DefaultDecoders, flagger: f}
 }
 
 func (r *Runtime) Close() error {
@@ -55,7 +57,6 @@ func (r *Runtime) WriteTo(w io.Writer) (n int64, err error) {
 func (r *Runtime) ReadFrom(reader io.Reader) (n int64, err error) {
 	return r.InputOutput.ReadFrom(reader)
 }
-
 
 func (r *Runtime) AddHandlerFunc(f func(r *Runtime, ctx context.Context) error) {
 	r.Handlers = append(r.Handlers, f)
